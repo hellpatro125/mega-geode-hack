@@ -1,11 +1,11 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.25)
 
 project(MegaHackGeode VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Geode REQUIRED)
+add_subdirectory($ENV{GEODE_SDK} ${CMAKE_CURRENT_BINARY_DIR}/geode)
 
 file(GLOB_RECURSE SOURCES
     "src/*.cpp"
@@ -13,7 +13,5 @@ file(GLOB_RECURSE SOURCES
 )
 
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
-
-target_compile_definitions(${PROJECT_NAME} PRIVATE GEODE_MOD_ID="antigravity.megahack_assistant")
 
 setup_geode_mod(${PROJECT_NAME})
