@@ -1,0 +1,90 @@
+{
+  "geode": "5.0.0",
+  "gd": {
+    "win": "2.2081",
+    "android": "2.2081",
+    "mac": "2.2081"
+  },
+  "id": "antigravity.megahack_assistant",
+  "name": "MegaHack Geode & Frame Prediction",
+  "version": "v1.0.0",
+  "developer": "Developer",
+  "description": "Аналог Mega Hack для Geometry Dash на базе Geode SDK с уникальной системой Frame Prediction (Click Correction / Assist).",
+  "settings": {
+    "prediction-enabled": {
+      "name": "Frame Prediction (Click Assist)",
+      "description": "Автоматически задерживает клик на несколько кадров, если нажатие было преждевременным и привело бы к смерти.",
+      "type": "bool",
+      "default": true
+    },
+    "prediction-window": {
+      "name": "Prediction Window (Кадры)",
+      "description": "Максимальное количество кадров, на которое алгоритм может подвести клик до безопасной позиции.",
+      "type": "int",
+      "default": 5,
+      "min": 1,
+      "max": 30
+    },
+    "prediction-mode": {
+      "name": "Prediction Strategy",
+      "description": "Режим работы: Smart Orb Snapping (подводка к сферам) или Hazard Avoidance (обход препятствий).",
+      "type": "string",
+      "default": "Hazard Avoidance & Orb Snapping",
+      "one-of": [
+        "Hazard Avoidance & Orb Snapping",
+        "Orb Snapping Only",
+        "Hazard Avoidance Only"
+      ]
+    },
+    "noclip": {
+      "name": "Noclip",
+      "description": "Отключает смерть от препятствий.",
+      "type": "bool",
+      "default": false
+    },
+    "speedhack-enabled": {
+      "name": "Speedhack",
+      "description": "Изменение скорости игрового процесса.",
+      "type": "bool",
+      "default": false
+    },
+    "speedhack-value": {
+      "name": "Speedhack Multiplier",
+      "description": "Множитель скорости игры.",
+      "type": "float",
+      "default": 1.0,
+      "min": 0.05,
+      "max": 10.0
+    },
+    "practice-music": {
+      "name": "Practice Music Hack",
+      "description": "Сохраняет стандартную музыку уровня в режиме практики вместо трека практики.",
+      "type": "bool",
+      "default": true
+    },
+    "show-hitboxes": {
+      "name": "Show Hitboxes",
+      "description": "Отображает хитбоксы игрока и опасных объектов.",
+      "type": "bool",
+      "default": false
+    },
+    "accurate-percentage": {
+      "name": "Accurate Percentage",
+      "description": "Показывает процент прохождения уровня с сотыми долями (например, 94.62%).",
+      "type": "bool",
+      "default": true
+    },
+    "cps-counter": {
+      "name": "CPS & Jump Counter",
+      "description": "Отображает текущий CPS (клики в секунду) и число прыжков.",
+      "type": "bool",
+      "default": true
+    },
+    "safe-mode": {
+      "name": "Safe Mode",
+      "description": "Блокирует отправку результатов на сервера и получение звёзд/орбов при включенных читах.",
+      "type": "bool",
+      "default": true
+    }
+  }
+}

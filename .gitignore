@@ -1,0 +1,4 @@
+build/
+*.geode
+make_logo.js
+make_logo.py
