@@ -25,6 +25,7 @@ jobs:
       - name: Build Mod
         uses: geode-sdk/build-geode-mod@main
         with:
+          sdk: 'v5.11.2'
           combine: true
 
       - name: Upload Artifact
