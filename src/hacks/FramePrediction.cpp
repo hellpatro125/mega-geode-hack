@@ -34,7 +34,7 @@ bool FramePredictionManager::willCollideWithHazard(PlayerObject* player, PlayLay
         auto* objects = playLayer->m_objects;
         for (int i = 0; i < objects->count(); ++i) {
             auto* obj = static_cast<GameObject*>(objects->objectAtIndex(i));
-            if (!obj || !obj->m_isActive || obj->m_hasBeenActivated) continue;
+            if (!obj || obj->m_isActivated) continue;
 
             cocos2d::CCPoint objPos = obj->getPosition();
             if (std::abs(objPos.x - simPos.x) > 150.0f) continue;
@@ -63,10 +63,10 @@ GameObject* FramePredictionManager::findApproachingOrb(PlayerObject* player, Pla
     auto* objects = playLayer->m_objects;
     for (int i = 0; i < objects->count(); ++i) {
         auto* obj = static_cast<GameObject*>(objects->objectAtIndex(i));
-        if (!obj || !obj->m_isActive || obj->m_hasBeenActivated) continue;
+        if (!obj || obj->m_isActivated) continue;
 
         // Check if interactive ring/orb
-        if (obj->m_isRing || obj->m_objectType == GameObjectType::YellowJumpRing) {
+        if (obj->m_objectType == GameObjectType::YellowJumpRing) {
             cocos2d::CCPoint ringPos = obj->getPosition();
             float dx = ringPos.x - playerPos.x;
             float dy = std::abs(ringPos.y - playerPos.y);
