@@ -4,9 +4,9 @@
 #include <Geode/ui/Popup.hpp>
 #include "../Config.hpp"
 
-class HackMenuLayer : public geode::Popup<> {
+class HackMenuLayer : public geode::Popup {
 protected:
-    bool setup() override;
+    bool init(float width, float height);
 
     cocos2d::CCLabelBMFont* m_windowLabel = nullptr;
     cocos2d::CCLabelBMFont* m_speedLabel = nullptr;
@@ -14,7 +14,6 @@ protected:
     void onTogglePrediction(cocos2d::CCObject* sender);
     void onWindowMinus(cocos2d::CCObject* sender);
     void onWindowPlus(cocos2d::CCObject* sender);
-    void onCyclePredictionMode(cocos2d::CCObject* sender);
 
     void onToggleNoclip(cocos2d::CCObject* sender);
     void onToggleSpeedhack(cocos2d::CCObject* sender);
@@ -28,5 +27,4 @@ protected:
 
 public:
     static HackMenuLayer* create();
-    void openMenu();
 };

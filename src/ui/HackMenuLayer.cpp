@@ -4,7 +4,7 @@ using namespace geode::prelude;
 
 HackMenuLayer* HackMenuLayer::create() {
     auto ret = new HackMenuLayer();
-    if (ret && ret->initAnchored(380.0f, 290.0f, "GJ_square01.png")) {
+    if (ret && ret->init(380.0f, 290.0f)) {
         ret->autorelease();
         return ret;
     }
@@ -12,7 +12,9 @@ HackMenuLayer* HackMenuLayer::create() {
     return nullptr;
 }
 
-bool HackMenuLayer::setup() {
+bool HackMenuLayer::init(float width, float height) {
+    if (!geode::Popup::init(width, height, "GJ_square01.png")) return false;
+
     this->setTitle("MegaHack & Frame Prediction");
 
     auto& cfg = Config::get();
@@ -121,7 +123,7 @@ bool HackMenuLayer::setup() {
     musicTitle->setPosition({70.0f, 95.0f});
     menu->addChild(musicTitle);
 
-    // 5. Accurate Percentage & Safe Mode
+    // 5. Accurate Percentage
     auto percentToggle = CCMenuItemToggler::createWithStandardSprites(
         this, menu_selector(HackMenuLayer::onToggleAccuratePercent), 0.7f
     );

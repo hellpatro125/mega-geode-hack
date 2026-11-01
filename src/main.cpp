@@ -62,13 +62,12 @@ class $modify(MegaPauseLayer, PauseLayer) {
 
 #if defined(GEODE_IS_WINDOWS) || defined(GEODE_IS_MACOS)
 class $modify(MegaKeyboardDispatcher, CCKeyboardDispatcher) {
-    bool dispatchKeyboardMSG(enumKeyCodes key, bool isKeyDown, bool isKeyRepeat) {
+    bool dispatchKeyboardMSG(enumKeyCodes key, bool isKeyDown, bool isKeyRepeat, double time) {
         // Shift key (Shift, LeftShift, RightShift) or Tab toggles the Hack Menu
         if ((key == KEY_Shift || key == KEY_LeftShift || key == KEY_RightShift || key == KEY_Tab) && isKeyDown && !isKeyRepeat) {
             auto scene = CCDirector::sharedDirector()->getRunningScene();
             if (scene) {
                 if (auto existing = scene->getChildByID("HackMenuLayer")) {
-                    // Close menu if already open
                     existing->removeFromParentAndCleanup(true);
                     return true;
                 }
@@ -79,7 +78,7 @@ class $modify(MegaKeyboardDispatcher, CCKeyboardDispatcher) {
                 }
             }
         }
-        return CCKeyboardDispatcher::dispatchKeyboardMSG(key, isKeyDown, isKeyRepeat);
+        return CCKeyboardDispatcher::dispatchKeyboardMSG(key, isKeyDown, isKeyRepeat, time);
     }
 };
 #endif
