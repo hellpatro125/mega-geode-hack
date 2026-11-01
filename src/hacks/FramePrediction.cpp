@@ -4,22 +4,18 @@
 using namespace geode::prelude;
 
 bool FramePredictionManager::willCollideWithHazard(PlayerObject* player, PlayLayer* playLayer, int framesAhead) {
-    if (!player || !playLayer || !playLayer->m_collisionHash) return false;
+    if (!player || !playLayer || !playLayer->m_objects) return false;
 
     cocos2d::CCPoint playerPos = player->getPosition();
-    float xVel = player->m_xVelocity;
-    // Estimated vertical velocity if jumped:
-    float yVel = player->m_jumpAccel;
-    float gravity = player->m_gravity;
+    float xVel = 311.58f; // Standard 1x speed in Geometry Dash
+    float yVel = 12.0f;   // Estimated jump impulse
+    float gravity = -0.9f;
 
-    // Simulate bounding box trajectory over `framesAhead` frames
     cocos2d::CCRect playerBox = player->getObjectRect();
     float boxW = playerBox.size.width;
     float boxH = playerBox.size.height;
 
-    // Fixed step time in GD (240hz physics = 1/240.0f)
     float stepDt = 1.0f / 240.0f;
-
     cocos2d::CCPoint simPos = playerPos;
     float simYVel = yVel;
 
@@ -35,17 +31,19 @@ bool FramePredictionManager::willCollideWithHazard(PlayerObject* player, PlayLay
             boxH
         );
 
-        // Check against nearby hazard objects
-        if (playLayer->m_hazardObjects) {
-            auto* hazards = playLayer->m_hazardObjects;
-            for (int i = 0; i < hazards->count(); ++i) {
-                auto* obj = static_cast<GameObject*>(hazards->objectAtIndex(i));
-                if (!obj || !obj->m_isActive || obj->m_hasBeenActivated) continue;
+        auto* objects = playLayer->m_objects;
+        for (int i = 0; i < objects->count(); ++i) {
+            auto* obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+            if (!obj || !obj->m_isActive || obj->m_hasBeenActivated) continue;
 
+            cocos2d::CCPoint objPos = obj->getPosition();
+            if (std::abs(objPos.x - simPos.x) > 150.0f) continue;
+
+            // Check if hazard/spike
+            if (obj->m_objectType == GameObjectType::Hazard) {
                 cocos2d::CCRect hazardRect = obj->getObjectRect();
-                // If within close range and intersecting
                 if (simRect.intersectsRect(hazardRect)) {
-                    return true; // Immediate jump leads to hazard collision!
+                    return true;
                 }
             }
         }
@@ -55,27 +53,27 @@ bool FramePredictionManager::willCollideWithHazard(PlayerObject* player, PlayLay
 }
 
 GameObject* FramePredictionManager::findApproachingOrb(PlayerObject* player, PlayLayer* playLayer, int windowFrames) {
-    if (!player || !playLayer || !playLayer->m_ringObjects) return nullptr;
+    if (!player || !playLayer || !playLayer->m_objects) return nullptr;
 
     cocos2d::CCPoint playerPos = player->getPosition();
-    float xVel = player->m_xVelocity;
-    if (xVel <= 0.0f) xVel = 300.0f; // fallback forward velocity
+    float xVel = 311.58f;
     float stepDt = 1.0f / 240.0f;
-
     float maxDistanceAhead = xVel * stepDt * static_cast<float>(windowFrames);
 
-    auto* rings = playLayer->m_ringObjects;
-    for (int i = 0; i < rings->count(); ++i) {
-        auto* ring = static_cast<GameObject*>(rings->objectAtIndex(i));
-        if (!ring || !ring->m_isActive || ring->m_hasBeenActivated) continue;
+    auto* objects = playLayer->m_objects;
+    for (int i = 0; i < objects->count(); ++i) {
+        auto* obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+        if (!obj || !obj->m_isActive || obj->m_hasBeenActivated) continue;
 
-        cocos2d::CCPoint ringPos = ring->getPosition();
-        float dx = ringPos.x - playerPos.x;
-        float dy = std::abs(ringPos.y - playerPos.y);
+        // Check if interactive ring/orb
+        if (obj->m_isRing || obj->m_objectType == GameObjectType::YellowJumpRing) {
+            cocos2d::CCPoint ringPos = obj->getPosition();
+            float dx = ringPos.x - playerPos.x;
+            float dy = std::abs(ringPos.y - playerPos.y);
 
-        // If ring is ahead of player within the prediction window distance
-        if (dx > 0.0f && dx <= maxDistanceAhead && dy <= 60.0f) {
-            return ring;
+            if (dx > 0.0f && dx <= maxDistanceAhead && dy <= 60.0f) {
+                return obj;
+            }
         }
     }
 
@@ -85,12 +83,10 @@ GameObject* FramePredictionManager::findApproachingOrb(PlayerObject* player, Pla
 bool FramePredictionManager::isCurrentFrameSafe(PlayerObject* player, PlayLayer* playLayer) {
     if (!player || !playLayer) return false;
 
-    // Check if player is currently in valid jump state or touching an orb
     if (pendingClick.needsOrbActivation && pendingClick.targetOrb) {
         cocos2d::CCRect playerRect = player->getObjectRect();
         cocos2d::CCRect orbRect = pendingClick.targetOrb->getObjectRect();
 
-        // Expanding orb activation hitbox slightly for forgiveness
         orbRect.origin.x -= 10.0f;
         orbRect.origin.y -= 10.0f;
         orbRect.size.width += 20.0f;
@@ -102,7 +98,6 @@ bool FramePredictionManager::isCurrentFrameSafe(PlayerObject* player, PlayLayer*
         return false;
     }
 
-    // Check hazard clearance for current frame jump
     return !willCollideWithHazard(player, playLayer, 3);
 }
 
@@ -124,16 +119,13 @@ void FramePredictionManager::step(PlayLayer* playLayer, float dt) {
     bool safeNow = isCurrentFrameSafe(player, playLayer);
 
     if (safeNow) {
-        // Execute the delayed click on the frame where player won't die!
         lastDelayFrames = pendingClick.elapsedFrames;
         totalCorrections++;
         feedbackTimer = 1.0f;
 
-        // Perform genuine button push
         playLayer->handleButton(true, pendingClick.button, pendingClick.isPlayer1);
         pendingClick.active = false;
     } else if (pendingClick.elapsedFrames >= pendingClick.maxWaitFrames) {
-        // Window expired. If still unsafe, do not cause instant death, drop click or fire
         pendingClick.active = false;
     }
 }
@@ -148,7 +140,7 @@ class $modify(PredictiveGameLayer, GJBaseGameLayer) {
         if (cfg.predictionEnabled && playLayer && down && button == 1) {
             auto* player = isPlayer1 ? playLayer->m_player1 : playLayer->m_player2;
 
-            if (player && !player->m_isDead && !player->m_hasCompletedLevel) {
+            if (player && !player->m_isDead) {
                 auto& mgr = FramePredictionManager::get();
 
                 // Check 1: If approaching an orb in mid-air
@@ -165,7 +157,7 @@ class $modify(PredictiveGameLayer, GJBaseGameLayer) {
                     mgr.pendingClick.elapsedFrames = 0;
                     mgr.pendingClick.needsOrbActivation = true;
                     mgr.pendingClick.targetOrb = upcomingOrb;
-                    return; // Intercepted: wait until player arrives at safe orb hitbox!
+                    return;
                 }
 
                 // Check 2: If jumping immediately hits a hazard within short lookahead
@@ -179,7 +171,7 @@ class $modify(PredictiveGameLayer, GJBaseGameLayer) {
                         mgr.pendingClick.elapsedFrames = 0;
                         mgr.pendingClick.needsOrbActivation = false;
                         mgr.pendingClick.targetOrb = nullptr;
-                        return; // Intercepted: delay jump until frame where player clears hazard!
+                        return;
                     }
                 }
             }

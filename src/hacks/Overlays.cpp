@@ -3,14 +3,16 @@
 #include <Geode/modify/GJBaseGameLayer.hpp>
 #include "../Config.hpp"
 #include "FramePrediction.hpp"
+#include <chrono>
 
 using namespace geode::prelude;
+
+static std::vector<std::chrono::steady_clock::time_point> s_clickTimestamps;
+static int s_totalJumps = 0;
 
 class $modify(OverlayPlayLayer, PlayLayer) {
     struct Fields {
         cocos2d::CCLabelBMFont* m_overlayLabel = nullptr;
-        std::vector<float> m_clickTimestamps;
-        int m_totalJumps = 0;
     };
 
     bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
@@ -18,7 +20,6 @@ class $modify(OverlayPlayLayer, PlayLayer) {
 
         auto winSize = cocos2d::CCDirector::sharedDirector()->getWinSize();
 
-        // Create status HUD label in top-left or bottom-left corner
         auto label = cocos2d::CCLabelBMFont::create("", "bigFont.fnt");
         if (label) {
             label->setScale(0.35f);
@@ -38,19 +39,17 @@ class $modify(OverlayPlayLayer, PlayLayer) {
         auto& cfg = Config::get();
         if (!m_fields->m_overlayLabel) return;
 
-        // Clean up old click timestamps (older than 1 second)
-        float now = this->m_time;
-        auto& clicks = m_fields->m_clickTimestamps;
-        clicks.erase(
-            std::remove_if(clicks.begin(), clicks.end(), [now](float t) {
-                return (now - t) > 1.0f;
+        // Clean up clicks older than 1 second
+        auto now = std::chrono::steady_clock::now();
+        s_clickTimestamps.erase(
+            std::remove_if(s_clickTimestamps.begin(), s_clickTimestamps.end(), [now](auto const& tp) {
+                return std::chrono::duration_cast<std::chrono::milliseconds>(now - tp).count() > 1000;
             }),
-            clicks.end()
+            s_clickTimestamps.end()
         );
 
-        int currentCPS = static_cast<int>(clicks.size());
+        int currentCPS = static_cast<int>(s_clickTimestamps.size());
 
-        // Accurate percentage calculation
         float currentPercent = 0.0f;
         if (m_player1 && !m_isPracticeMode) {
             currentPercent = this->getCurrentPercent();
@@ -63,7 +62,7 @@ class $modify(OverlayPlayLayer, PlayLayer) {
         }
 
         if (cfg.cpsCounter) {
-            hudText += fmt::format("CPS: {} | Jumps: {}\n", currentCPS, m_fields->m_totalJumps);
+            hudText += fmt::format("CPS: {} | Jumps: {}\n", currentCPS, s_totalJumps);
         }
 
         if (cfg.predictionEnabled) {
@@ -81,7 +80,6 @@ class $modify(OverlayPlayLayer, PlayLayer) {
 
         m_fields->m_overlayLabel->setString(hudText.c_str());
 
-        // Color coding: green when frame prediction triggered, white normally
         if (FramePredictionManager::get().feedbackTimer > 0.0f) {
             m_fields->m_overlayLabel->setColor({50, 255, 120});
         } else {
@@ -91,10 +89,9 @@ class $modify(OverlayPlayLayer, PlayLayer) {
 
     void levelComplete() {
         auto& cfg = Config::get();
-        // Safe Mode: prevent submitting leaderboard/saving progress if hacks were active
         bool cheatActive = cfg.noclip || (cfg.speedhackEnabled && cfg.speedhackValue != 1.0f) || cfg.predictionEnabled;
         if (cfg.safeMode && cheatActive) {
-            FLAlertLayer::create("Safe Mode", "Уровень пройден с активными читами / Frame Prediction. Прогресс не отправлен на сервер.", "OK")->show();
+            FLAlertLayer::create("Safe Mode", "Cheat / Frame Prediction used. Score submission blocked.", "OK")->show();
             return;
         }
 
@@ -107,13 +104,8 @@ class $modify(CPSBaseGameLayer, GJBaseGameLayer) {
         GJBaseGameLayer::handleButton(down, button, isPlayer1);
 
         if (down && button == 1 && isPlayer1) {
-            if (auto* playLayer = typeinfo_cast<PlayLayer*>(this)) {
-                auto* fields = static_cast<OverlayPlayLayer::Fields*>(playLayer->m_fields.self());
-                if (fields) {
-                    fields->m_clickTimestamps.push_back(playLayer->m_time);
-                    fields->m_totalJumps++;
-                }
-            }
+            s_clickTimestamps.push_back(std::chrono::steady_clock::now());
+            s_totalJumps++;
         }
     }
 };
