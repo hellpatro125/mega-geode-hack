@@ -30,18 +30,18 @@ public:
         auto* mod = geode::Mod::get();
         if (!mod) return;
 
-        predictionEnabled = mod->getSettingValue<bool>("prediction-enabled");
-        predictionWindow = static_cast<int>(mod->getSettingValue<int64_t>("prediction-window"));
-        predictionMode = mod->getSettingValue<std::string>("prediction-mode");
-        noclip = mod->getSettingValue<bool>("noclip");
-        speedhackEnabled = mod->getSettingValue<bool>("speedhack-enabled");
-        speedhackValue = static_cast<float>(mod->getSettingValue<double>("speedhack-value"));
-        practiceMusic = mod->getSettingValue<bool>("practice-music");
-        showHitboxes = mod->getSettingValue<bool>("show-hitboxes");
-        showTrajectory = mod->getSettingValue<bool>("show-trajectory");
-        accuratePercentage = mod->getSettingValue<bool>("accurate-percentage");
-        cpsCounter = mod->getSettingValue<bool>("cps-counter");
-        safeMode = mod->getSettingValue<bool>("safe-mode");
+        try { predictionEnabled = mod->getSettingValue<bool>("prediction-enabled"); } catch (...) {}
+        try { predictionWindow = static_cast<int>(mod->getSettingValue<int64_t>("prediction-window")); } catch (...) {}
+        try { predictionMode = mod->getSettingValue<std::string>("prediction-mode"); } catch (...) {}
+        try { noclip = mod->getSettingValue<bool>("noclip"); } catch (...) {}
+        try { speedhackEnabled = mod->getSettingValue<bool>("speedhack-enabled"); } catch (...) {}
+        try { speedhackValue = static_cast<float>(mod->getSettingValue<double>("speedhack-value")); } catch (...) {}
+        try { practiceMusic = mod->getSettingValue<bool>("practice-music"); } catch (...) {}
+        try { showHitboxes = mod->getSettingValue<bool>("show-hitboxes"); } catch (...) {}
+        try { showTrajectory = mod->getSettingValue<bool>("show-trajectory"); } catch (...) {}
+        try { accuratePercentage = mod->getSettingValue<bool>("accurate-percentage"); } catch (...) {}
+        try { cpsCounter = mod->getSettingValue<bool>("cps-counter"); } catch (...) {}
+        try { safeMode = mod->getSettingValue<bool>("safe-mode"); } catch (...) {}
     }
 
     void saveToSettings() {

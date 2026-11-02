@@ -33,8 +33,8 @@ class $modify(OverlayPlayLayer, PlayLayer) {
         return true;
     }
 
-    void update(float dt) {
-        PlayLayer::update(dt);
+    void postUpdate(float dt) {
+        PlayLayer::postUpdate(dt);
 
         auto& cfg = Config::get();
         if (!m_fields->m_overlayLabel) return;

@@ -12,7 +12,7 @@ public:
 
     cocos2d::CCDrawNode* m_drawNode = nullptr;
 
-    void initForPlayLayer(PlayLayer* playLayer);
+    void setupForPlayLayer(PlayLayer* playLayer);
     void updateTrajectory(PlayLayer* playLayer);
     void clear();
 };
