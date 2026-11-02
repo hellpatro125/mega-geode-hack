@@ -12,11 +12,12 @@ static void drawSegmentQuad(CCDrawNode* node, const CCPoint& from, const CCPoint
     CCPoint dir = ccpMult(diff, 1.0f / len);
     CCPoint perp = ccp(-dir.y * radius, dir.x * radius);
 
-    CCPoint verts[4];
-    verts[0] = ccpAdd(from, perp);
-    verts[1] = ccpSub(from, perp);
-    verts[2] = ccpSub(to, perp);
-    verts[3] = ccpAdd(to, perp);
+    CCPoint verts[4] = {
+        ccpAdd(from, perp),
+        ccpSub(from, perp),
+        ccpSub(to, perp),
+        ccpAdd(to, perp)
+    };
 
     node->drawPolygon(verts, 4, color, 0.0f, color);
 }
@@ -65,7 +66,7 @@ static bool checkHazardAt(const CCPoint& pos, const CCSize& playerSize, PlayLaye
         if (!obj) continue;
 
         CCPoint objPos = obj->getPosition();
-        if (std::abs(objPos.x - pos.x) > 45.0f) continue;
+        if (std::abs(objPos.x - pos.x) > 40.0f) continue;
 
         bool isHazard = (obj->m_objectType == GameObjectType::Hazard ||
                          obj->m_objectType == GameObjectType::AnimatedHazard ||
@@ -140,127 +141,74 @@ void TrajectoryVisualizer::updateTrajectory(PlayLayer* playLayer) {
     m_drawNode->clear();
 
     CCPoint currentPos = player->getPosition();
-    float speedMult = player->m_speedMultiplier > 0.0 ? static_cast<float>(player->m_speedMultiplier) : 0.9f;
-    float xVel = (speedMult / 0.9f) * 311.58f;
-    float dt = 1.0f / 240.0f;
     float gravityDir = player->m_isUpsideDown ? -1.0f : 1.0f;
-
-    bool isWave = player->m_isDart;
-    bool isShip = player->m_isShip;
-    bool isBall = player->m_isBall;
-    bool isBird = player->m_isBird;
-    bool isSwing = player->m_isSwing;
-    bool isGroundMode = (!isWave && !isShip && !isBird && !isSwing);
-
     float groundY = currentPos.y;
     CCSize playerSize(26.0f, 26.0f);
 
-    ccColor4F redColor = {1.0f, 0.15f, 0.15f, 1.0f};          // Bright Red Line
-    ccColor4F greenColor = {0.0f, 1.0f, 0.15f, 1.0f};        // Pure Neon Green Arc
-    ccColor4F pinkFill = {1.0f, 0.15f, 0.65f, 0.55f};        // Pink Translucent Hitbox Fill
-    ccColor4F pinkBorder = {1.0f, 0.1f, 0.3f, 1.0f};         // Red/Pink Hitbox Border
+    ccColor4F redColor = {1.0f, 0.15f, 0.15f, 1.0f};          // Red Danger Line
+    ccColor4F greenColor = {0.0f, 1.0f, 0.15f, 1.0f};        // Neon Green Jump Arc
+    ccColor4F pinkFill = {1.0f, 0.15f, 0.65f, 0.55f};        // Pink Death Box Fill
+    ccColor4F pinkBorder = {1.0f, 0.1f, 0.3f, 1.0f};         // Red Death Box Border
+
+    bool isCube = player->isInNormalMode();
+    bool isWave = player->m_isDart;
+    bool isShip = player->isFlying();
 
     // =========================================================================
-    // 1. NO-CLICK / RELEASE PATH (Straight Red Line to Hazard + Death Hitbox)
+    // 1. DANGER CHECK: Line straight ahead on floor to spike
     // =========================================================================
     {
         CCPoint simPos = currentPos;
-        float simYVel = static_cast<float>(player->m_yVelocity);
         bool hitHazard = false;
         CCPoint hitPos = CCPointZero;
 
-        const int RELEASE_STEPS = 200;
+        // Check up to 220 pixels ahead along the ground
+        const float MAX_LOOKAHEAD = 220.0f;
+        const float STEP_X = 4.0f;
+        int maxSteps = static_cast<int>(MAX_LOOKAHEAD / STEP_X);
 
-        for (int step = 1; step <= RELEASE_STEPS; ++step) {
+        for (int step = 1; step <= maxSteps; ++step) {
             CCPoint prevPos = simPos;
-
-            if (isWave) {
-                float dirY = -1.0f; // falling diagonally
-                simPos.x += xVel * dt;
-                simPos.y += dirY * xVel * dt * gravityDir;
-            } else if (isShip) {
-                simPos.x += xVel * dt;
-                simPos.y += simYVel * dt;
-                simYVel -= 18.0f * 60.0f * dt * gravityDir;
-            } else if (isBall) {
-                simPos.x += xVel * dt;
-                simPos.y += simYVel * dt;
-                simYVel -= 35.0f * 60.0f * dt * gravityDir;
-            } else if (isBird) {
-                simPos.x += xVel * dt;
-                simPos.y += simYVel * dt;
-                simYVel -= 25.0f * 60.0f * dt * gravityDir;
-            } else if (isSwing) {
-                simPos.x += xVel * dt;
-                simPos.y += simYVel * dt;
-                simYVel -= 15.0f * 60.0f * dt * gravityDir;
-            } else {
-                // Cube / Robot / Spider
-                simPos.x += xVel * dt;
-                if (player->m_isOnGround) {
-                    simPos.y = groundY;
-                    simYVel = 0.0f;
-                } else {
-                    simPos.y += simYVel * dt;
-                    simYVel -= 35.0f * 60.0f * dt * gravityDir;
-                    if (simPos.y < groundY) {
-                        simPos.y = groundY;
-                        simYVel = 0.0f;
-                    }
-                }
-            }
+            simPos.x += STEP_X;
 
             if (checkHazardAt(simPos, playerSize, playLayer)) {
                 hitHazard = true;
                 hitPos = simPos;
                 drawSegmentQuad(m_drawNode, prevPos, simPos, 2.0f, redColor);
-                break; // Stop right at the hazard!
+                break;
             }
 
-            drawSegmentQuad(m_drawNode, prevPos, simPos, 2.0f, redColor);
+            drawSegmentQuad(m_drawNode, prevPos, simPos, 1.6f, redColor);
         }
 
-        // Draw Player Death Hitbox (Pink square with red border and center dot)
+        // Draw Player Death Hitbox (Pink square with red border and center dot) on the hazard
         if (hitHazard) {
             drawHitboxBox(m_drawNode, hitPos, playerSize, pinkFill, pinkBorder);
         }
     }
 
     // =========================================================================
-    // 2. JUMP / HOLD PATH (Smooth Green Parabolas across multiple bounces)
+    // 2. JUMP PATH: Exact Mathematical Parabola (Jump Arc over obstacles)
     // =========================================================================
-    if (isGroundMode) {
-        CCPoint simPos = currentPos;
-        // RobTop cube jump physics: impulse 455 px/s, gravity -1570 px/s^2 (height ~66px, length ~180px)
-        float jumpImpulse = 455.0f * gravityDir;
-        float gravityAcc = -1570.0f * gravityDir;
-        float simYVel = jumpImpulse;
+    if (isCube) {
+        // Standard GD Cube jump: Length = 180px, Height = 66px
+        const float jumpLength = 180.0f;
+        const float jumpHeight = 66.0f;
+        const float stepDist = 3.5f;
+        int numSteps = static_cast<int>(jumpLength / stepDist);
 
-        int bounces = 0;
-        const int MAX_BOUNCES = 3; // 3 continuous jump parabolas
-        const int MAX_TOTAL_STEPS = 550;
+        CCPoint prevPos = currentPos;
         bool hitHazard = false;
         CCPoint hitPos = CCPointZero;
 
-        for (int step = 1; step <= MAX_TOTAL_STEPS; ++step) {
-            CCPoint prevPos = simPos;
+        for (int i = 1; i <= numSteps; ++i) {
+            float dx = static_cast<float>(i) * stepDist;
+            float normX = dx / jumpLength;
+            if (normX > 1.0f) normX = 1.0f;
 
-            simPos.x += xVel * dt;
-            simPos.y += simYVel * dt;
-            simYVel += gravityAcc * dt;
-
-            // Landing on the floor
-            if ((gravityDir > 0.0f && simPos.y <= groundY && step > 6) ||
-                (gravityDir < 0.0f && simPos.y >= groundY && step > 6)) {
-                simPos.y = groundY;
-                bounces++;
-                if (bounces >= MAX_BOUNCES) {
-                    drawSegmentQuad(m_drawNode, prevPos, simPos, 1.8f, greenColor);
-                    break;
-                }
-                // Bounce into next jump arc!
-                simYVel = jumpImpulse;
-            }
+            // Parabolic arc: y = groundY + 4 * H * normX * (1 - normX)
+            float arcY = 4.0f * jumpHeight * normX * (1.0f - normX);
+            CCPoint simPos(currentPos.x + dx, groundY + (arcY * gravityDir));
 
             if (checkHazardAt(simPos, playerSize, playLayer)) {
                 hitHazard = true;
@@ -270,57 +218,26 @@ void TrajectoryVisualizer::updateTrajectory(PlayLayer* playLayer) {
             }
 
             drawSegmentQuad(m_drawNode, prevPos, simPos, 1.8f, greenColor);
+            prevPos = simPos;
         }
 
         if (hitHazard) {
             drawHitboxBox(m_drawNode, hitPos, playerSize, pinkFill, pinkBorder);
         }
-    } else if (isBird || isShip || isWave || isSwing || isBall) {
-        // Continuous green arc / wave path for other gamemodes
-        CCPoint simPos = currentPos;
-        float simYVel = 0.0f;
-        if (isWave) {
-            simYVel = xVel * gravityDir;
-        } else if (isShip) {
-            simYVel = static_cast<float>(player->m_yVelocity) + (400.0f * gravityDir);
-        } else if (isBird) {
-            simYVel = 600.0f * gravityDir;
-        }
-
-        bool hitHazard = false;
-        CCPoint hitPos = CCPointZero;
-
-        for (int step = 1; step <= 250; ++step) {
-            CCPoint prevPos = simPos;
-
-            if (isWave) {
-                simPos.x += xVel * dt;
-                simPos.y += simYVel * dt;
-            } else if (isShip) {
-                simPos.x += xVel * dt;
-                simPos.y += simYVel * dt;
-                simYVel -= 1080.0f * dt * gravityDir;
-            } else if (isBird) {
-                simPos.x += xVel * dt;
-                simPos.y += simYVel * dt;
-                simYVel -= 1500.0f * dt * gravityDir;
-            } else {
-                simPos.x += xVel * dt;
-                simPos.y += simYVel * dt;
-            }
-
-            if (checkHazardAt(simPos, playerSize, playLayer)) {
-                hitHazard = true;
-                hitPos = simPos;
-                drawSegmentQuad(m_drawNode, prevPos, simPos, 1.8f, redColor);
-                break;
-            }
-
+    } else if (isWave) {
+        // Wave 45-degree angle path
+        float length = 180.0f;
+        CCPoint upEnd(currentPos.x + length, currentPos.y + (length * gravityDir));
+        drawSegmentQuad(m_drawNode, currentPos, upEnd, 1.8f, greenColor);
+    } else if (isShip) {
+        // Ship upward curved thrust path
+        CCPoint prevPos = currentPos;
+        for (int i = 1; i <= 30; ++i) {
+            float dx = i * 6.0f;
+            float dy = (i * 3.5f) * gravityDir;
+            CCPoint simPos(currentPos.x + dx, currentPos.y + dy);
             drawSegmentQuad(m_drawNode, prevPos, simPos, 1.8f, greenColor);
-        }
-
-        if (hitHazard) {
-            drawHitboxBox(m_drawNode, hitPos, playerSize, pinkFill, pinkBorder);
+            prevPos = simPos;
         }
     }
 }

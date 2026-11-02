@@ -44,59 +44,27 @@ bool FramePredictionManager::willJumpArcHitHazardAtOffset(PlayerObject* player, 
     CCPoint startPos = player->getPosition();
     startPos.x += offsetX;
 
-    float speedMult = player->m_speedMultiplier > 0.0 ? static_cast<float>(player->m_speedMultiplier) : 0.9f;
-    float xVel = (speedMult / 0.9f) * 311.58f;
-    float dt = 1.0f / 120.0f;
     float gravityDir = player->m_isUpsideDown ? -1.0f : 1.0f;
-
-    bool isWave = player->m_isDart;
-    bool isShip = player->m_isShip;
-    bool isBird = player->m_isBird;
-    bool isBall = player->m_isBall;
-
-    float simYVel = 0.0f;
-    float gravityAcc = 0.0f;
-
-    if (isWave) {
-        simYVel = xVel * gravityDir;
-        gravityAcc = 0.0f;
-    } else if (isShip) {
-        simYVel = static_cast<float>(player->m_yVelocity) + (400.0f * gravityDir);
-        gravityAcc = -1080.0f * gravityDir;
-    } else if (isBird) {
-        simYVel = 600.0f * gravityDir;
-        gravityAcc = -1500.0f * gravityDir;
-    } else if (isBall) {
-        simYVel = -static_cast<float>(player->m_yVelocity);
-        gravityAcc = 2100.0f * gravityDir;
-    } else {
-        // Cube / Robot / Spider
-        simYVel = 455.0f * gravityDir;
-        gravityAcc = -1570.0f * gravityDir;
-    }
-
-    CCPoint simPos = startPos;
-    CCSize playerSize(24.0f, 24.0f);
     float groundY = player->getPositionY();
+    CCSize playerSize(24.0f, 24.0f);
 
-    const int STEPS = (isWave || isShip) ? 25 : 65;
+    const float jumpLength = 180.0f;
+    const float jumpHeight = 66.0f;
+    const float stepDist = 5.0f;
+    int numSteps = static_cast<int>(jumpLength / stepDist);
 
     auto* objects = playLayer->m_objects;
 
-    for (int step = 1; step <= STEPS; ++step) {
-        simPos.x += xVel * dt;
-        simPos.y += simYVel * dt;
-        simYVel += gravityAcc * dt;
+    for (int i = 1; i <= numSteps; ++i) {
+        float dx = static_cast<float>(i) * stepDist;
+        float normX = dx / jumpLength;
+        if (normX > 1.0f) normX = 1.0f;
 
-        if (!isWave && !isShip && !isBird) {
-            if ((gravityDir > 0.0f && simPos.y <= groundY && step > 6) ||
-                (gravityDir < 0.0f && simPos.y >= groundY && step > 6)) {
-                break; // safely landed!
-            }
-        }
+        float arcY = 4.0f * jumpHeight * normX * (1.0f - normX);
+        CCPoint simPos(startPos.x + dx, groundY + (arcY * gravityDir));
 
-        for (int i = 0; i < objects->count(); ++i) {
-            auto* obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+        for (int j = 0; j < objects->count(); ++j) {
+            auto* obj = static_cast<GameObject*>(objects->objectAtIndex(j));
             if (isObjectHazard(obj, simPos, playerSize)) {
                 return true;
             }
