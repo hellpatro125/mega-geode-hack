@@ -27,21 +27,23 @@ static void drawHitboxBox(CCDrawNode* node, const CCPoint& center, const CCSize&
     float halfW = size.width * 0.5f;
     float halfH = size.height * 0.5f;
 
-    CCPoint verts[4];
-    verts[0] = {center.x - halfW, center.y - halfH};
-    verts[1] = {center.x + halfW, center.y - halfH};
-    verts[2] = {center.x + halfW, center.y + halfH};
-    verts[3] = {center.x - halfW, center.y + halfH};
+    CCPoint verts[4] = {
+        CCPoint(center.x - halfW, center.y - halfH),
+        CCPoint(center.x + halfW, center.y - halfH),
+        CCPoint(center.x + halfW, center.y + halfH),
+        CCPoint(center.x - halfW, center.y + halfH)
+    };
 
     node->drawPolygon(verts, 4, fillColor, 1.8f, borderColor);
 
     // Inner green/white center marker
-    CCPoint dotVerts[4];
     float dotR = 2.5f;
-    dotVerts[0] = {center.x - dotR, center.y - dotR};
-    dotVerts[1] = {center.x + dotR, center.y - dotR};
-    dotVerts[2] = {center.x + dotR, center.y + dotR};
-    dotVerts[3] = {center.x - dotR, center.y + dotR};
+    CCPoint dotVerts[4] = {
+        CCPoint(center.x - dotR, center.y - dotR),
+        CCPoint(center.x + dotR, center.y - dotR),
+        CCPoint(center.x + dotR, center.y + dotR),
+        CCPoint(center.x - dotR, center.y + dotR)
+    };
 
     ccColor4F dotColor = {0.2f, 1.0f, 0.4f, 1.0f};
     node->drawPolygon(dotVerts, 4, dotColor, 0.5f, {1.0f, 1.0f, 1.0f, 1.0f});
