@@ -8,7 +8,8 @@ struct PendingClick {
     bool active = false;
     int button = 1;
     bool isPlayer1 = true;
-    int maxWaitFrames = 5;
+    int targetWaitFrames = 0;
+    int maxWaitFrames = 30;
     int elapsedFrames = 0;
     bool needsOrbActivation = false;
     bool needsLanding = false;
@@ -32,8 +33,8 @@ public:
         pendingClick.targetOrb = nullptr;
     }
 
-    bool isCurrentFrameSafe(PlayerObject* player, PlayLayer* playLayer);
-    bool willCollideWithHazard(PlayerObject* player, PlayLayer* playLayer, int framesAhead);
+    int findSafeJumpDelay(PlayerObject* player, PlayLayer* playLayer, int maxWindowFrames);
+    bool willJumpArcHitHazardAtOffset(PlayerObject* player, PlayLayer* playLayer, float offsetX);
     GameObject* findApproachingOrb(PlayerObject* player, PlayLayer* playLayer, int windowFrames);
     void step(PlayLayer* playLayer, float dt);
 };

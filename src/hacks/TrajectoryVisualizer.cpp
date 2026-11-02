@@ -231,9 +231,9 @@ void TrajectoryVisualizer::updateTrajectory(PlayLayer* playLayer) {
     // =========================================================================
     if (isGroundMode) {
         CCPoint simPos = currentPos;
-        // RobTop cube jump physics: initial impulse ~680 px/s, gravity ~2100 px/s^2
-        float jumpImpulse = 680.0f * gravityDir;
-        float gravityAcc = -2100.0f * gravityDir;
+        // RobTop cube jump physics: impulse 455 px/s, gravity -1570 px/s^2 (height ~66px, length ~180px)
+        float jumpImpulse = 455.0f * gravityDir;
+        float gravityAcc = -1570.0f * gravityDir;
         float simYVel = jumpImpulse;
 
         int bounces = 0;

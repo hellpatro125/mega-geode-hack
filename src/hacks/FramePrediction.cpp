@@ -5,76 +5,153 @@ using namespace geode::prelude;
 
 static bool s_isDispatchingPredictedClick = false;
 
-bool FramePredictionManager::willCollideWithHazard(PlayerObject* player, PlayLayer* playLayer, int framesAhead) {
-    if (!player || !playLayer || !playLayer->m_objects) return false;
+static bool isObjectHazard(GameObject* obj, const CCPoint& pos, const CCSize& playerSize) {
+    if (!obj) return false;
 
-    CCPoint playerPos = player->getPosition();
-    float speedMult = player->m_speedMultiplier > 0.0 ? static_cast<float>(player->m_speedMultiplier) : 0.9f;
-    float xVel = (speedMult / 0.9f) * 311.58f;
-    float gravityDir = player->m_isUpsideDown ? -1.0f : 1.0f;
-    float dt = 1.0f / 240.0f;
+    CCPoint objPos = obj->getPosition();
+    if (std::abs(objPos.x - pos.x) > 45.0f) return false;
 
-    float simYVel = 0.0f;
-    float gravityAcc = -35.0f * gravityDir;
+    bool isHazard = (obj->m_objectType == GameObjectType::Hazard ||
+                     obj->m_objectType == GameObjectType::AnimatedHazard ||
+                     obj->m_objectID == 8 || obj->m_objectID == 9 || obj->m_objectID == 39 ||
+                     obj->m_objectID == 103 || (obj->m_objectID >= 1733 && obj->m_objectID <= 1736));
 
-    if (player->m_isDart) {
-        simYVel = xVel * gravityDir;
-        gravityAcc = 0.0f;
-    } else if (player->m_isShip) {
-        simYVel = static_cast<float>(player->m_yVelocity) + (18.0f * gravityDir);
-        gravityAcc = -18.0f * gravityDir;
-    } else if (player->m_isBird) {
-        simYVel = 10.5f * gravityDir;
-        gravityAcc = -25.0f * gravityDir;
-    } else if (player->m_isBall) {
-        simYVel = -static_cast<float>(player->m_yVelocity);
-        gravityAcc = 35.0f * gravityDir;
-    } else {
-        simYVel = 12.0f * gravityDir;
-        gravityAcc = -35.0f * gravityDir;
+    if (isHazard) {
+        float dist = ccpDistance(pos, objPos);
+        if (dist < 22.0f) return true;
+
+        CCRect playerBox(
+            pos.x - playerSize.width * 0.5f,
+            pos.y - playerSize.height * 0.5f,
+            playerSize.width,
+            playerSize.height
+        );
+
+        CCRect objRect = obj->getObjectRect();
+        if (objRect.size.width < 1.0f) {
+            objRect = CCRect(objPos.x - 14.0f, objPos.y - 14.0f, 28.0f, 28.0f);
+        }
+
+        if (playerBox.intersectsRect(objRect)) return true;
     }
 
-    CCRect playerBox = player->getObjectRect();
-    float boxW = std::max(16.0f, playerBox.size.width * 0.7f);
-    float boxH = std::max(16.0f, playerBox.size.height * 0.7f);
+    return false;
+}
 
-    CCPoint simPos = playerPos;
+bool FramePredictionManager::willJumpArcHitHazardAtOffset(PlayerObject* player, PlayLayer* playLayer, float offsetX) {
+    if (!player || !playLayer || !playLayer->m_objects) return false;
 
-    for (int f = 1; f <= framesAhead; ++f) {
+    CCPoint startPos = player->getPosition();
+    startPos.x += offsetX;
+
+    float speedMult = player->m_speedMultiplier > 0.0 ? static_cast<float>(player->m_speedMultiplier) : 0.9f;
+    float xVel = (speedMult / 0.9f) * 311.58f;
+    float dt = 1.0f / 120.0f;
+    float gravityDir = player->m_isUpsideDown ? -1.0f : 1.0f;
+
+    bool isWave = player->m_isDart;
+    bool isShip = player->m_isShip;
+    bool isBird = player->m_isBird;
+    bool isBall = player->m_isBall;
+
+    float simYVel = 0.0f;
+    float gravityAcc = 0.0f;
+
+    if (isWave) {
+        simYVel = xVel * gravityDir;
+        gravityAcc = 0.0f;
+    } else if (isShip) {
+        simYVel = static_cast<float>(player->m_yVelocity) + (400.0f * gravityDir);
+        gravityAcc = -1080.0f * gravityDir;
+    } else if (isBird) {
+        simYVel = 600.0f * gravityDir;
+        gravityAcc = -1500.0f * gravityDir;
+    } else if (isBall) {
+        simYVel = -static_cast<float>(player->m_yVelocity);
+        gravityAcc = 2100.0f * gravityDir;
+    } else {
+        // Cube / Robot / Spider
+        simYVel = 455.0f * gravityDir;
+        gravityAcc = -1570.0f * gravityDir;
+    }
+
+    CCPoint simPos = startPos;
+    CCSize playerSize(24.0f, 24.0f);
+    float groundY = player->getPositionY();
+
+    const int STEPS = (isWave || isShip) ? 25 : 65;
+
+    auto* objects = playLayer->m_objects;
+
+    for (int step = 1; step <= STEPS; ++step) {
         simPos.x += xVel * dt;
         simPos.y += simYVel * dt;
         simYVel += gravityAcc * dt;
 
-        CCRect simRect(
-            simPos.x - boxW * 0.5f,
-            simPos.y - boxH * 0.5f,
-            boxW,
-            boxH
-        );
+        if (!isWave && !isShip && !isBird) {
+            if ((gravityDir > 0.0f && simPos.y <= groundY && step > 6) ||
+                (gravityDir < 0.0f && simPos.y >= groundY && step > 6)) {
+                break; // safely landed!
+            }
+        }
 
-        auto* objects = playLayer->m_objects;
         for (int i = 0; i < objects->count(); ++i) {
             auto* obj = static_cast<GameObject*>(objects->objectAtIndex(i));
-            if (!obj) continue;
-
-            CCPoint objPos = obj->getPosition();
-            if (std::abs(objPos.x - simPos.x) > 40.0f) continue;
-
-            bool isHazard = (obj->m_objectType == GameObjectType::Hazard ||
-                             obj->m_objectType == GameObjectType::AnimatedHazard ||
-                             obj->m_objectID == 8 || obj->m_objectID == 9 || obj->m_objectID == 39 ||
-                             obj->m_objectID == 103 || (obj->m_objectID >= 1733 && obj->m_objectID <= 1736));
-
-            if (isHazard) {
-                float dist = ccpDistance(simPos, objPos);
-                if (dist < 24.0f || simRect.intersectsRect(obj->getObjectRect())) {
-                    return true;
-                }
+            if (isObjectHazard(obj, simPos, playerSize)) {
+                return true;
             }
         }
     }
 
     return false;
+}
+
+int FramePredictionManager::findSafeJumpDelay(PlayerObject* player, PlayLayer* playLayer, int maxWindowFrames) {
+    if (!player || !playLayer) return 0;
+
+    // 1. Check if jumping right now is lethal
+    bool lethalNow = willJumpArcHitHazardAtOffset(player, playLayer, 0.0f);
+    if (!lethalNow) {
+        return 0; // Jumping right now is completely safe!
+    }
+
+    // 2. Jumping now hits a hazard! Search for earliest safe delay within window:
+    float speedMult = player->m_speedMultiplier > 0.0 ? static_cast<float>(player->m_speedMultiplier) : 0.9f;
+    float xVel = (speedMult / 0.9f) * 311.58f;
+    float dt = 1.0f / 240.0f;
+
+    auto* objects = playLayer->m_objects;
+    CCSize playerSize(24.0f, 24.0f);
+
+    for (int k = 1; k <= maxWindowFrames; ++k) {
+        float offsetX = xVel * dt * static_cast<float>(k);
+
+        // Check if sliding on ground during this delay runs into a spike:
+        CCPoint groundCheckPos = player->getPosition();
+        groundCheckPos.x += offsetX;
+
+        bool groundCollision = false;
+        if (objects) {
+            for (int i = 0; i < objects->count(); ++i) {
+                auto* obj = static_cast<GameObject*>(objects->objectAtIndex(i));
+                if (isObjectHazard(obj, groundCheckPos, playerSize)) {
+                    groundCollision = true;
+                    break;
+                }
+            }
+        }
+        if (groundCollision) {
+            // Cannot delay further, would crash into hazard on ground
+            break;
+        }
+
+        // Test if jump arc launched at offset clears the hazard:
+        if (!willJumpArcHitHazardAtOffset(player, playLayer, offsetX)) {
+            return k; // Found safe jump frame!
+        }
+    }
+
+    return -1; // No safe frame found
 }
 
 GameObject* FramePredictionManager::findApproachingOrb(PlayerObject* player, PlayLayer* playLayer, int windowFrames) {
@@ -84,7 +161,7 @@ GameObject* FramePredictionManager::findApproachingOrb(PlayerObject* player, Pla
     float speedMult = player->m_speedMultiplier > 0.0 ? static_cast<float>(player->m_speedMultiplier) : 0.9f;
     float xVel = (speedMult / 0.9f) * 311.58f;
     float dt = 1.0f / 240.0f;
-    float maxDistanceAhead = xVel * dt * static_cast<float>(windowFrames) + 10.0f;
+    float maxDistanceAhead = xVel * dt * static_cast<float>(windowFrames) + 12.0f;
 
     auto* objects = playLayer->m_objects;
     for (int i = 0; i < objects->count(); ++i) {
@@ -112,35 +189,6 @@ GameObject* FramePredictionManager::findApproachingOrb(PlayerObject* player, Pla
     return nullptr;
 }
 
-bool FramePredictionManager::isCurrentFrameSafe(PlayerObject* player, PlayLayer* playLayer) {
-    if (!player || !playLayer) return true;
-
-    // Check if landing condition met (for Cube / Ball / Robot / Spider)
-    if (pendingClick.needsLanding) {
-        if (player->m_isOnGround) {
-            return true;
-        }
-    }
-
-    // Check if orb activation reached
-    if (pendingClick.needsOrbActivation && pendingClick.targetOrb) {
-        CCRect playerRect = player->getObjectRect();
-        CCRect orbRect = pendingClick.targetOrb->getObjectRect();
-
-        orbRect.origin.x -= 16.0f;
-        orbRect.origin.y -= 16.0f;
-        orbRect.size.width += 32.0f;
-        orbRect.size.height += 32.0f;
-
-        if (playerRect.intersectsRect(orbRect)) {
-            return true;
-        }
-        return false;
-    }
-
-    return !willCollideWithHazard(player, playLayer, 3);
-}
-
 void FramePredictionManager::step(PlayLayer* playLayer, float dt) {
     if (feedbackTimer > 0.0f) {
         feedbackTimer -= dt;
@@ -156,11 +204,30 @@ void FramePredictionManager::step(PlayLayer* playLayer, float dt) {
 
     pendingClick.elapsedFrames++;
 
-    bool safeNow = isCurrentFrameSafe(player, playLayer);
+    bool shouldFire = false;
 
-    if (safeNow || pendingClick.elapsedFrames >= pendingClick.maxWaitFrames) {
+    if (pendingClick.needsLanding) {
+        if (player->m_isOnGround) shouldFire = true;
+    } else if (pendingClick.needsOrbActivation && pendingClick.targetOrb) {
+        CCRect pRect = player->getObjectRect();
+        CCRect oRect = pendingClick.targetOrb->getObjectRect();
+        oRect.origin.x -= 16.0f; oRect.origin.y -= 16.0f;
+        oRect.size.width += 32.0f; oRect.size.height += 32.0f;
+        if (pRect.intersectsRect(oRect)) shouldFire = true;
+    } else {
+        if (pendingClick.elapsedFrames >= pendingClick.targetWaitFrames) {
+            shouldFire = true;
+        }
+    }
+
+    // Safety timeout: never permanently swallow clicks
+    if (pendingClick.elapsedFrames >= pendingClick.maxWaitFrames) {
+        shouldFire = true;
+    }
+
+    if (shouldFire) {
         lastDelayFrames = pendingClick.elapsedFrames;
-        if (safeNow && pendingClick.elapsedFrames > 0) {
+        if (pendingClick.elapsedFrames > 0) {
             totalCorrections++;
             feedbackTimer = 1.0f;
         }
@@ -177,7 +244,6 @@ void FramePredictionManager::step(PlayLayer* playLayer, float dt) {
 
 class $modify(PredictiveGameLayer, GJBaseGameLayer) {
     void handleButton(bool down, int button, bool isPlayer1) {
-        // Re-entrancy guard: if we are delivering a predicted click, pass straight through!
         if (s_isDispatchingPredictedClick) {
             GJBaseGameLayer::handleButton(down, button, isPlayer1);
             return;
@@ -189,7 +255,7 @@ class $modify(PredictiveGameLayer, GJBaseGameLayer) {
         if (cfg.predictionEnabled && playLayer && button == 1) {
             auto& mgr = FramePredictionManager::get();
 
-            // When user releases the button, flush any pending click so state stays synchronized!
+            // Release button: flush pending click and send release
             if (!down) {
                 if (mgr.pendingClick.active && mgr.pendingClick.button == button) {
                     s_isDispatchingPredictedClick = true;
@@ -207,58 +273,57 @@ class $modify(PredictiveGameLayer, GJBaseGameLayer) {
             auto* player = isPlayer1 ? playLayer->m_player1 : playLayer->m_player2;
 
             if (player && !player->m_isDead) {
-                // If player is on ground and not in midair, normal ground clicks should NOT be intercepted!
-                // Only intercept mid-air or lethal cases:
-
-                // Check 1: If approaching any orb (all modes)
+                // 1. Orb Snapping: delay click until touching approaching orb
                 if (cfg.predictionMode != "Hazard Avoidance Only") {
                     GameObject* upcomingOrb = mgr.findApproachingOrb(player, playLayer, cfg.predictionWindow);
                     if (upcomingOrb) {
                         CCRect playerRect = player->getObjectRect();
                         CCRect orbRect = upcomingOrb->getObjectRect();
-                        // If already inside orb hitbox, execute immediately!
                         if (!playerRect.intersectsRect(orbRect)) {
                             mgr.pendingClick.active = true;
                             mgr.pendingClick.button = button;
                             mgr.pendingClick.isPlayer1 = isPlayer1;
+                            mgr.pendingClick.targetWaitFrames = 0;
                             mgr.pendingClick.maxWaitFrames = cfg.predictionWindow;
                             mgr.pendingClick.elapsedFrames = 0;
                             mgr.pendingClick.needsOrbActivation = true;
                             mgr.pendingClick.needsLanding = false;
                             mgr.pendingClick.targetOrb = upcomingOrb;
-                            return; // Delay click until touching orb!
+                            return;
                         }
                     }
                 }
 
-                // Check 2: Mid-air click right before landing on ground (Cube, Ball, Robot, Spider)
+                // 2. Mid-air click before landing (Cube, Ball, Robot, Spider)
                 bool isGroundMode = !player->m_isShip && !player->m_isDart && !player->m_isBird && !player->m_isSwing;
                 if (isGroundMode && !player->m_isOnGround && player->m_yVelocity <= 0.0) {
-                    // Only delay if close to landing
                     mgr.pendingClick.active = true;
                     mgr.pendingClick.button = button;
                     mgr.pendingClick.isPlayer1 = isPlayer1;
+                    mgr.pendingClick.targetWaitFrames = 0;
                     mgr.pendingClick.maxWaitFrames = cfg.predictionWindow;
                     mgr.pendingClick.elapsedFrames = 0;
                     mgr.pendingClick.needsOrbActivation = false;
                     mgr.pendingClick.needsLanding = true;
                     mgr.pendingClick.targetOrb = nullptr;
-                    return; // Buffer click until touchdown!
+                    return;
                 }
 
-                // Check 3: Lethal hazard ahead (Wave / Ship / UFO)
-                if (!isGroundMode && cfg.predictionMode != "Orb Snapping Only") {
-                    bool lethalJump = mgr.willCollideWithHazard(player, playLayer, 2);
-                    if (lethalJump) {
+                // 3. Hazard Avoidance / Click Delay: check if jumping now lands on hazard
+                if (cfg.predictionMode != "Orb Snapping Only") {
+                    int safeDelay = mgr.findSafeJumpDelay(player, playLayer, cfg.predictionWindow);
+                    if (safeDelay > 0) {
+                        // Premature click detected! Delaying to safe frame!
                         mgr.pendingClick.active = true;
                         mgr.pendingClick.button = button;
                         mgr.pendingClick.isPlayer1 = isPlayer1;
+                        mgr.pendingClick.targetWaitFrames = safeDelay;
                         mgr.pendingClick.maxWaitFrames = cfg.predictionWindow;
                         mgr.pendingClick.elapsedFrames = 0;
                         mgr.pendingClick.needsOrbActivation = false;
                         mgr.pendingClick.needsLanding = false;
                         mgr.pendingClick.targetOrb = nullptr;
-                        return; // Delay until path clears!
+                        return; // Delay jump until safe frame!
                     }
                 }
             }
