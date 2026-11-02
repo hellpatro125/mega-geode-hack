@@ -55,13 +55,19 @@ bool FramePredictionManager::willCollideWithHazard(PlayerObject* player, PlayLay
         auto* objects = playLayer->m_objects;
         for (int i = 0; i < objects->count(); ++i) {
             auto* obj = static_cast<GameObject*>(objects->objectAtIndex(i));
-            if (!obj || obj->m_isActivated) continue;
+            if (!obj) continue;
 
             CCPoint objPos = obj->getPosition();
-            if (std::abs(objPos.x - simPos.x) > 60.0f) continue;
+            if (std::abs(objPos.x - simPos.x) > 40.0f) continue;
 
-            if (obj->m_objectType == GameObjectType::Hazard || obj->m_objectType == GameObjectType::AnimatedHazard) {
-                if (simRect.intersectsRect(obj->getObjectRect())) {
+            bool isHazard = (obj->m_objectType == GameObjectType::Hazard ||
+                             obj->m_objectType == GameObjectType::AnimatedHazard ||
+                             obj->m_objectID == 8 || obj->m_objectID == 9 || obj->m_objectID == 39 ||
+                             obj->m_objectID == 103 || (obj->m_objectID >= 1733 && obj->m_objectID <= 1736));
+
+            if (isHazard) {
+                float dist = ccpDistance(simPos, objPos);
+                if (dist < 24.0f || simRect.intersectsRect(obj->getObjectRect())) {
                     return true;
                 }
             }
