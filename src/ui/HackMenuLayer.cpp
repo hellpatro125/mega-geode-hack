@@ -58,7 +58,7 @@ bool HackMenuLayer::init(float width, float height) {
     plusBtn->setPosition({340.0f, 220.0f});
     this->m_buttonMenu->addChild(plusBtn);
 
-    // 2. Noclip
+    // 2. Noclip & Trajectory
     auto noclipToggle = CCMenuItemToggler::createWithStandardSprites(
         this, menu_selector(HackMenuLayer::onToggleNoclip), 0.7f
     );
@@ -71,6 +71,19 @@ bool HackMenuLayer::init(float width, float height) {
     noclipTitle->setAnchorPoint({0.0f, 0.5f});
     noclipTitle->setPosition({70.0f, 175.0f});
     menu->addChild(noclipTitle);
+
+    auto trajToggle = CCMenuItemToggler::createWithStandardSprites(
+        this, menu_selector(HackMenuLayer::onToggleTrajectory), 0.7f
+    );
+    trajToggle->toggle(cfg.showTrajectory);
+    trajToggle->setPosition({210.0f, 175.0f});
+    this->m_buttonMenu->addChild(trajToggle);
+
+    auto trajTitle = CCLabelBMFont::create("Trajectory", "bigFont.fnt");
+    trajTitle->setScale(0.4f);
+    trajTitle->setAnchorPoint({0.0f, 0.5f});
+    trajTitle->setPosition({235.0f, 175.0f});
+    menu->addChild(trajTitle);
 
     // 3. Speedhack
     auto speedToggle = CCMenuItemToggler::createWithStandardSprites(
@@ -199,6 +212,12 @@ void HackMenuLayer::onWindowPlus(CCObject* sender) {
 void HackMenuLayer::onToggleNoclip(CCObject* sender) {
     auto& cfg = Config::get();
     cfg.noclip = !cfg.noclip;
+    cfg.saveToSettings();
+}
+
+void HackMenuLayer::onToggleTrajectory(CCObject* sender) {
+    auto& cfg = Config::get();
+    cfg.showTrajectory = !cfg.showTrajectory;
     cfg.saveToSettings();
 }
 

@@ -12,6 +12,7 @@ struct QueuedPredictionClick {
     int maxWaitFrames = 5;
     int elapsedFrames = 0;
     bool needsOrbActivation = false;
+    bool needsLanding = false;
     geode::Ref<GameObject> targetOrb = nullptr;
 };
 
@@ -32,15 +33,8 @@ public:
         feedbackTimer = 0.0f;
     }
 
-    // Checks whether an immediate jump at current position causes hazard collision
     bool willCollideWithHazard(PlayerObject* player, PlayLayer* playLayer, int framesAhead);
-
-    // Checks if the player is approaching an interactive ring/orb within the frame prediction window
     GameObject* findApproachingOrb(PlayerObject* player, PlayLayer* playLayer, int windowFrames);
-
-    // Tests if current frame is safe to release the jump
     bool isCurrentFrameSafe(PlayerObject* player, PlayLayer* playLayer);
-
-    // Handles the queued click step each game tick
     void step(PlayLayer* playLayer, float dt);
 };

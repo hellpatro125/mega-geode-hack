@@ -16,6 +16,7 @@ protected:
     void onWindowPlus(cocos2d::CCObject* sender);
 
     void onToggleNoclip(cocos2d::CCObject* sender);
+    void onToggleTrajectory(cocos2d::CCObject* sender);
     void onToggleSpeedhack(cocos2d::CCObject* sender);
     void onSpeedMinus(cocos2d::CCObject* sender);
     void onSpeedPlus(cocos2d::CCObject* sender);

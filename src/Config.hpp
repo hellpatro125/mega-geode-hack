@@ -20,6 +20,7 @@ public:
     float speedhackValue = 1.0f;
     bool practiceMusic = true;
     bool showHitboxes = false;
+    bool showTrajectory = true;
     bool accuratePercentage = true;
     bool cpsCounter = true;
     bool safeMode = true;
@@ -37,6 +38,7 @@ public:
         speedhackValue = static_cast<float>(mod->getSettingValue<double>("speedhack-value"));
         practiceMusic = mod->getSettingValue<bool>("practice-music");
         showHitboxes = mod->getSettingValue<bool>("show-hitboxes");
+        showTrajectory = mod->getSettingValue<bool>("show-trajectory");
         accuratePercentage = mod->getSettingValue<bool>("accurate-percentage");
         cpsCounter = mod->getSettingValue<bool>("cps-counter");
         safeMode = mod->getSettingValue<bool>("safe-mode");
@@ -54,6 +56,7 @@ public:
         (void)mod->setSettingValue<double>("speedhack-value", speedhackValue);
         (void)mod->setSettingValue<bool>("practice-music", practiceMusic);
         (void)mod->setSettingValue<bool>("show-hitboxes", showHitboxes);
+        (void)mod->setSettingValue<bool>("show-trajectory", showTrajectory);
         (void)mod->setSettingValue<bool>("accurate-percentage", accuratePercentage);
         (void)mod->setSettingValue<bool>("cps-counter", cpsCounter);
         (void)mod->setSettingValue<bool>("safe-mode", safeMode);

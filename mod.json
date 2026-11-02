@@ -68,6 +68,12 @@
       "type": "bool",
       "default": false
     },
+    "show-trajectory": {
+      "name": "Show Trajectory",
+      "description": "Отображает прогнозируемую траекторию движения игрока для всех режимов (Куб, Волна, Корабль, Шар, НЛО и др.).",
+      "type": "bool",
+      "default": true
+    },
     "accurate-percentage": {
       "name": "Accurate Percentage",
       "description": "Показывает процент прохождения уровня с сотыми долями (например, 94.62%).",
